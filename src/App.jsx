@@ -51,6 +51,12 @@ function App() {
     // ตรวจสอบจาก localStorage เมื่อ component โหลด
     return localStorage.getItem('isAuthenticated') === 'true'
   });
+  
+  // User role state
+  const [userRole, setUserRole] = useState(() => {
+    // ตรวจสอบ role จาก localStorage เมื่อ component โหลด
+    return localStorage.getItem('userRole') || 'admin'
+  });
 
   const [data, setData] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -284,8 +290,12 @@ function App() {
   const visibleColumns = getVisibleColumns();
 
   // ฟังก์ชันจัดการการ login
-  const handleLogin = useCallback((success) => {
+  const handleLogin = useCallback((success, role = 'admin') => {
     setIsAuthenticated(success);
+    setUserRole(role);
+    if (success) {
+      localStorage.setItem('userRole', role);
+    }
   }, []);
 
   // ฟังก์ชันจัดการการ logout
@@ -294,10 +304,12 @@ function App() {
       return;
     }
     localStorage.removeItem('isAuthenticated');
+    localStorage.removeItem('userRole');
     localStorage.removeItem('username');
     localStorage.removeItem('lastActivityTime');
     localStorage.removeItem('lastVisibilityChangeTime');
     setIsAuthenticated(false);
+    setUserRole('admin');
   }, []);
 
   // Auto-logout: ตรวจจับเมื่อไม่มีการใช้งาน 10 นาที
@@ -491,10 +503,12 @@ function App() {
               <button className="btn btn-primary flex-fill" onClick={fetchData} disabled={loading}>
                  {loading ? '...' : '🔄 รีเฟรช'}
               </button>
-              {/* ปุ่มเพิ่มสินค้าใหม่ */}
-              <button className="btn btn-success flex-fill" onClick={openAddModal} disabled={loading}>
-                 ➕ เพิ่มสินค้า
-              </button>
+              {/* ปุ่มเพิ่มสินค้าใหม่ - แสดงเฉพาะ admin */}
+              {userRole === 'admin' && (
+                <button className="btn btn-success flex-fill" onClick={openAddModal} disabled={loading}>
+                   ➕ เพิ่มสินค้า
+                </button>
+              )}
             </div>
           </div>
         </div>
@@ -516,12 +530,15 @@ function App() {
                     {key === '_category' ? 'หมวดหมู่' : key}
                   </th>
                 ))}
-                <th style={{width: '120px', minWidth: '120px', textAlign: 'center', backgroundColor: '#cfe2ff'}}>จัดการ</th>
+                {/* คอลัมน์จัดการ - แสดงเฉพาะ admin */}
+                {userRole === 'admin' && (
+                  <th style={{width: '120px', minWidth: '120px', textAlign: 'center', backgroundColor: '#cfe2ff'}}>จัดการ</th>
+                )}
               </tr>
             </thead>
             <tbody>
               {filteredData.length === 0 ? (
-                <tr><td colSpan={visibleColumns.length + 1} className="text-center p-5 text-muted">ไม่พบข้อมูล</td></tr>
+                <tr><td colSpan={visibleColumns.length + (userRole === 'admin' ? 1 : 0)} className="text-center p-5 text-muted">ไม่พบข้อมูล</td></tr>
               ) : (
                 filteredData.map((row, index) => (
                   <tr key={index}>
@@ -530,14 +547,17 @@ function App() {
                         {key === '_category' ? row._category : renderCellContent(key, row[key])}
                       </td>
                     ))}
-                    <td className="text-center">
-                      <div className="d-flex justify-content-center gap-1">
-                        {/* ปุ่มแก้ไข */}
-                        <button className="btn btn-warning btn-sm" onClick={() => openEditModal(row)}>✏️</button>
-                        {/* ปุ่มลบ */}
-                        <button className="btn btn-outline-danger btn-sm" onClick={() => handleDelete(row.rowIndex, row._category)}>🗑️</button>
-                      </div>
-                    </td>
+                    {/* คอลัมน์จัดการ - แสดงเฉพาะ admin */}
+                    {userRole === 'admin' && (
+                      <td className="text-center">
+                        <div className="d-flex justify-content-center gap-1">
+                          {/* ปุ่มแก้ไข */}
+                          <button className="btn btn-warning btn-sm" onClick={() => openEditModal(row)}>✏️</button>
+                          {/* ปุ่มลบ */}
+                          <button className="btn btn-outline-danger btn-sm" onClick={() => handleDelete(row.rowIndex, row._category)}>🗑️</button>
+                        </div>
+                      </td>
+                    )}
                   </tr>
                 ))
               )}
