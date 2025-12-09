@@ -4,7 +4,7 @@ import 'bootstrap/dist/css/bootstrap.min.css'
 import Login from './Login'
 
 // ⚠️ URL ของคุณ
-const API_URL = "https://script.google.com/macros/s/AKfycbzWS2H6bI5R4zk1ASWLUEyiSsPtH4xM_KotbwhIXIITnQbOHhAll7S1SsJgW94pYiZV/exec";
+const API_URL = "https://script.google.com/macros/s/AKfycbzLEilHykypkbvv1UvU-B9IdoGT_Nvn6UdB_aHndRgdUD5EwbPSAxPJjSpCqPkVHQVy/exec";
 
 // --- ตั้งค่าความกว้างคอลัมน์ ---
 const COLUMN_STYLES = {
