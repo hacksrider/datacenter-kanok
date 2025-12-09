@@ -300,8 +300,8 @@ function Login({ onLogin }) {
           position: 'absolute',
           left: 0,
           top: 0,
-          width: '55%',
-          height: '100%',
+          width: '36%',
+          height: '90%',
           objectFit: 'cover',
           zIndex: 0,
           opacity: 1
@@ -318,10 +318,10 @@ function Login({ onLogin }) {
         playsInline
         style={{
           position: 'absolute',
-          right: '-5%',
-          top: '5%',
-          width: '55%',
-          height: '100%',
+          right: '-1%',
+          top: '10%',
+          width: '40%',
+          height: '80%',
           objectFit: 'cover',
           objectPosition: 'center',
           zIndex: 0,
