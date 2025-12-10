@@ -9,17 +9,21 @@ const API_URL = "https://script.google.com/macros/s/AKfycbzLEilHykypkbvv1UvU-B9I
 // --- ตั้งค่าความกว้างคอลัมน์ ---
 const COLUMN_STYLES = {
   "_category": { width: "200px", minWidth: "200px" },
-  "รหัสสินค้า": { width: "100px", minWidth: "100px" },
+  "รหัสสินค้า": { width: "130px", minWidth: "130px" },
   "ชื่อสินค้า": { width: "200px", minWidth: "200px" },
   "รายละเอียด": { width: "300px", minWidth: "300px" },
-  "ขนาด": { width: "80px", minWidth: "80px" },
+  "ขนาด": { width: "150px", minWidth: "150px" },
   "ราคา": { width: "100px", minWidth: "100px" },
   "ภาพ": { width: "120px", minWidth: "120px" },
   "รูปภาพ": { width: "120px", minWidth: "120px" },
-  "รีวิว": { width: "250px", minWidth: "250px" },
-  "คุณลักษณะพิเศษ": { width: "200px", minWidth: "200px" },
-  "สเปคสินค้า": { width: "200px", minWidth: "200px" },
-  "วิธีการใช้งาน": { width: "200px", minWidth: "200px" },
+  "รีวิวการใช้งาน": { width: "300px", minWidth: "300px" },
+  "คุณลักษณะพิเศษ": { width: "350px", minWidth: "350px" },
+  "เสป็คสินค้า": { width: "220px", minWidth: "220px" },
+  "สเปคสินค้า": { width: "220px", minWidth: "220px" },
+  "วิธีการใช้งาน": { width: "350px", minWidth: "350px" },
+  "วิธีการบำรุงรักษา": { width: "350px", minWidth: "350px" },
+  "คำแนะนำเพิ่มเติม": { width: "300px", minWidth: "300px" },
+  "COA": { width: "80px", minWidth: "80px" },
 };
 
 // รายการหมวดหมู่ทั้งหมด
@@ -68,6 +72,10 @@ function App() {
   const [showModal, setShowModal] = useState(false); // ควบคุมการเปิดปิด Modal
   const [formData, setFormData] = useState({});      // เก็บข้อมูลในฟอร์ม
   const [editRowIndex, setEditRowIndex] = useState(null); // เก็บเลขบรรทัดที่จะแก้ (ถ้าเป็น null คือเพิ่มใหม่)
+  
+  // --- STATE สำหรับแสดงรูปภาพแบบขยาย ---
+  const [showImageModal, setShowImageModal] = useState(false);
+  const [imageModalUrl, setImageModalUrl] = useState('');
 
   // 1. ฟังก์ชันดึงข้อมูล
   const fetchData = useCallback(async () => {
@@ -122,10 +130,90 @@ function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchTerm]);
 
+  // ฟังก์ชันแปลง Google Drive link เป็น URL ที่แสดงรูปได้
+  const convertGoogleDriveLink = (url) => {
+    if (!url || typeof url !== 'string') {
+      return null;
+    }
+    
+    const strUrl = url.trim();
+    
+    // ตรวจสอบว่าเป็น Google Drive link หรือไม่
+    if (!strUrl.includes('drive.google.com')) {
+      return null;
+    }
+    
+    let fileId = null;
+    let folderId = null;
+    
+    // รูปแบบ 1: https://drive.google.com/file/d/FILE_ID/view
+    // รูปแบบ 2: https://drive.google.com/file/d/FILE_ID/view?usp=sharing
+    const fileMatch = strUrl.match(/\/file\/d\/([a-zA-Z0-9_-]+)/);
+    if (fileMatch) {
+      fileId = fileMatch[1];
+      // ใช้ proxy service เพื่อหลีกเลี่ยงปัญหา CORS
+      const directUrl = `https://drive.google.com/uc?export=view&id=${fileId}`;
+      return {
+        primary: `https://images.weserv.nl/?url=${encodeURIComponent(directUrl)}&output=webp`,
+        fallback: `https://api.allorigins.win/raw?url=${encodeURIComponent(directUrl)}`,
+        fallback2: `https://lh3.googleusercontent.com/d/${fileId}`,
+        fallback3: `https://drive.google.com/thumbnail?id=${fileId}&sz=w1000`,
+        fileId: fileId
+      };
+    }
+    
+    // รูปแบบ 3: https://drive.google.com/drive/folders/FOLDER_ID
+    const folderMatch = strUrl.match(/\/drive\/folders\/([a-zA-Z0-9_-]+)/);
+    if (folderMatch) {
+      folderId = folderMatch[1];
+      // สำหรับ folder ใช้ proxy service
+      const directUrl = `https://drive.google.com/uc?export=view&id=${folderId}`;
+      return {
+        primary: `https://images.weserv.nl/?url=${encodeURIComponent(directUrl)}&output=webp`,
+        fallback: `https://api.allorigins.win/raw?url=${encodeURIComponent(directUrl)}`,
+        fallback2: `https://lh3.googleusercontent.com/d/${folderId}`,
+        fallback3: `https://drive.google.com/thumbnail?id=${folderId}&sz=w1000`,
+        fileId: folderId
+      };
+    }
+    
+    // รูปแบบ 4: https://drive.google.com/uc?id=FILE_ID (รูปแบบที่แปลงแล้ว)
+    const ucMatch = strUrl.match(/\/uc\?.*id=([a-zA-Z0-9_-]+)/);
+    if (ucMatch) {
+      fileId = ucMatch[1];
+      const directUrl = `https://drive.google.com/uc?export=view&id=${fileId}`;
+      return {
+        primary: `https://images.weserv.nl/?url=${encodeURIComponent(directUrl)}&output=webp`,
+        fallback: `https://api.allorigins.win/raw?url=${encodeURIComponent(directUrl)}`,
+        fallback2: `https://lh3.googleusercontent.com/d/${fileId}`,
+        fallback3: `https://drive.google.com/thumbnail?id=${fileId}&sz=w1000`,
+        fileId: fileId
+      };
+    }
+    
+    // รูปแบบ 5: https://drive.google.com/open?id=FILE_ID
+    const openMatch = strUrl.match(/\/open\?id=([a-zA-Z0-9_-]+)/);
+    if (openMatch) {
+      fileId = openMatch[1];
+      const directUrl = `https://drive.google.com/uc?export=view&id=${fileId}`;
+      return {
+        primary: `https://images.weserv.nl/?url=${encodeURIComponent(directUrl)}&output=webp`,
+        fallback: `https://api.allorigins.win/raw?url=${encodeURIComponent(directUrl)}`,
+        fallback2: `https://lh3.googleusercontent.com/d/${fileId}`,
+        fallback3: `https://drive.google.com/thumbnail?id=${fileId}&sz=w1000`,
+        fileId: fileId
+      };
+    }
+    
+    return null;
+  };
+
   // 2. ฟังก์ชันแสดงผลเซลล์
   const renderCellContent = (key, value) => {
-    if (!value) return "";
-    const strValue = value.toString();
+    // ตรวจสอบว่า value มีค่าหรือไม่
+    if (value === null || value === undefined || value === '') return "";
+    const strValue = value.toString().trim();
+    if (!strValue) return "";
 
     // ก. YouTube
     if (strValue.includes("youtube.com") || strValue.includes("youtu.be")) {
@@ -135,7 +223,7 @@ function App() {
        
        if (videoId) {
          return (
-           <div className="ratio ratio-16x9" style={{ width: '130px' }}>
+           <div className="ratio ratio-16x9" style={{ width: '100%' }}>
              <iframe src={`https://www.youtube.com/embed/${videoId}`} allowFullScreen title="Video"></iframe>
            </div>
          );
@@ -144,15 +232,173 @@ function App() {
     }
 
     // ข. รูปภาพ
-    if (key.includes("ภาพ") || key.includes("Image") || key.includes("แบรนด์")) {
+    if (key.includes("ภาพ") || key.includes("Image") || key.includes("แบรนด์") || key.includes("รูปภาพ")) {
         if (strValue.includes("http")) {
-            const imgUrl = strValue.replace("file/d/", "uc?export=view&id=").replace("/view?usp=sharing", "");
-            return <img src={imgUrl} alt="img" style={{ width: '100px', height: '100px', objectFit: 'cover', borderRadius: '8px', border: '1px solid #ddd' }} />;
+            // ตรวจสอบว่าเป็น Google Drive link หรือไม่
+            const driveInfo = convertGoogleDriveLink(strValue);
+            if (driveInfo) {
+              // สร้าง unique key สำหรับ component เพื่อป้องกัน re-render
+              const imgKey = `drive-img-${driveInfo.fileId || Date.now()}`;
+              return (
+                <img 
+                  key={imgKey}
+                  src={driveInfo.primary} 
+                  alt="img" 
+                  data-fallback={driveInfo.fallback || ''}
+                  data-fallback2={driveInfo.fallback2 || ''}
+                  data-fallback3={driveInfo.fallback3 || ''}
+                  data-fileid={driveInfo.fileId}
+                  data-original-url={strValue}
+                  data-tried="primary"
+                  style={{ width: '100px', height: '100px', objectFit: 'cover', borderRadius: '8px', border: '1px solid #ddd', cursor: 'pointer' }}
+                  onClick={() => {
+                    setImageModalUrl(strValue);
+                    setShowImageModal(true);
+                  }}
+                  onError={(e) => {
+                    const tried = e.target.getAttribute('data-tried');
+                    const fallback = e.target.getAttribute('data-fallback');
+                    const fallback2 = e.target.getAttribute('data-fallback2');
+                    const fallback3 = e.target.getAttribute('data-fallback3');
+                    const fileId = e.target.getAttribute('data-fileid');
+                    const originalUrl = e.target.getAttribute('data-original-url');
+                    
+                    if (tried === 'primary' && fallback) {
+                      // ลอง fallback URL (allorigins proxy)
+                      e.target.setAttribute('data-tried', 'fallback');
+                      e.target.src = fallback;
+                    } else if (tried === 'fallback' && fallback2) {
+                      // ลอง fallback2 URL (lh3.googleusercontent.com)
+                      e.target.setAttribute('data-tried', 'fallback2');
+                      e.target.src = fallback2;
+                    } else if (tried === 'fallback2' && fallback3) {
+                      // ลอง fallback3 URL (thumbnail API)
+                      e.target.setAttribute('data-tried', 'fallback3');
+                      e.target.src = fallback3;
+                    } else if (tried === 'fallback3' && fileId) {
+                      // ลอง download API
+                      const downloadUrl = `https://drive.google.com/uc?export=download&id=${fileId}`;
+                      e.target.setAttribute('data-tried', 'download');
+                      e.target.src = downloadUrl;
+                    } else {
+                      // แสดง link แทน placeholder
+                      e.target.style.display = 'none';
+                      const parent = e.target.parentElement;
+                      if (parent && !parent.querySelector('a') && originalUrl) {
+                        const link = document.createElement('a');
+                        link.href = originalUrl;
+                        link.target = '_blank';
+                        link.rel = 'noreferrer';
+                        link.textContent = originalUrl.length > 50 ? originalUrl.substring(0, 50) + '...' : originalUrl;
+                        link.className = 'text-primary small text-break';
+                        link.style.display = 'block';
+                        link.style.maxWidth = '100px';
+                        parent.appendChild(link);
+                      }
+                    }
+                  }}
+                />
+              );
+            }
+            // ถ้าไม่ใช่ Google Drive link ให้ใช้ URL ตามเดิม
+            return (
+              <img 
+                src={strValue} 
+                alt="img" 
+                data-original-url={strValue}
+                style={{ width: '100px', height: '100px', objectFit: 'cover', borderRadius: '8px', border: '1px solid #ddd', cursor: 'pointer' }}
+                onClick={() => {
+                  setImageModalUrl(strValue);
+                  setShowImageModal(true);
+                }}
+                onError={(e) => {
+                  // แสดง link เมื่อโหลดไม่สำเร็จ
+                  const originalUrl = e.target.getAttribute('data-original-url') || strValue;
+                  e.target.style.display = 'none';
+                  const parent = e.target.parentElement;
+                  if (parent && !parent.querySelector('a')) {
+                    const link = document.createElement('a');
+                    link.href = originalUrl;
+                    link.target = '_blank';
+                    link.rel = 'noreferrer';
+                    link.textContent = originalUrl.length > 50 ? originalUrl.substring(0, 50) + '...' : originalUrl;
+                    link.className = 'text-primary small text-break';
+                    link.style.display = 'block';
+                    link.style.maxWidth = '100px';
+                    parent.appendChild(link);
+                  }
+                }}
+              />
+            );
         }
-        return <span className="text-muted small">No Image</span>;
+        // ถ้าไม่มี http ให้แสดงค่าตามที่มี
+        return <span className="text-muted small">{strValue}</span>;
     }
 
-    return strValue;
+    // ค. COA - แสดง TRUE/FALSE เป็นติ้กถูกสีเขียวและกากบาทสีแดง
+    if (key === "COA" || key.includes("COA")) {
+      const upperValue = strValue.toUpperCase();
+      if (upperValue === "TRUE" || upperValue === "1" || upperValue === "YES" || upperValue === "Y") {
+        return (
+          <div className="d-flex justify-content-center align-items-center" style={{ height: '100%' }}>
+            <span 
+              className="badge bg-success" 
+              style={{ 
+                fontSize: '1.2rem', 
+                padding: '0.25rem 0.5rem',
+                borderRadius: '50%',
+                width: '30px',
+                height: '30px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center'
+              }} 
+              title="TRUE"
+            >
+              ✓
+            </span>
+          </div>
+        );
+      } else if (upperValue === "FALSE" || upperValue === "0" || upperValue === "NO" || upperValue === "N" || upperValue === "") {
+        return (
+          <div className="d-flex justify-content-center align-items-center" style={{ height: '100%' }}>
+            <span 
+              className="badge bg-danger" 
+              style={{ 
+                fontSize: '1.2rem', 
+                padding: '0.25rem 0.5rem',
+                borderRadius: '50%',
+                width: '30px',
+                height: '30px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center'
+              }} 
+              title="FALSE"
+            >
+              ✗
+            </span>
+          </div>
+        );
+      }
+    }
+
+    // แสดงข้อความที่รองรับการขึ้นบรรทัดใหม่
+    // ตรวจสอบว่ามี newline character หรือไม่
+    if (strValue.includes('\n') || strValue.includes('\r')) {
+      return (
+        <div style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
+          {strValue.split('\n').map((line, index, array) => (
+            <span key={index}>
+              {line}
+              {index < array.length - 1 && <br />}
+            </span>
+          ))}
+        </div>
+      );
+    }
+    
+    return <span style={{ wordBreak: 'break-word' }}>{strValue}</span>;
   };
 
   // 3. ฟังก์ชันลบ
@@ -192,7 +438,15 @@ function App() {
     }
     setEditRowIndex(row.rowIndex); // เก็บ index ที่จะแก้
     const { _category, ...rowData } = row; // ลบ _category ออก
-    setFormData(rowData);         // เอาข้อมูลเดิมมาใส่ฟอร์ม
+    
+    // แปลงค่า COA จาก TRUE/FALSE เป็น boolean สำหรับ checkbox
+    const processedData = { ...rowData };
+    if (processedData.COA !== undefined && processedData.COA !== null) {
+      const coaValue = processedData.COA.toString().toUpperCase();
+      processedData.COA = (coaValue === "TRUE" || coaValue === "1" || coaValue === "YES" || coaValue === "Y");
+    }
+    
+    setFormData(processedData);         // เอาข้อมูลเดิมมาใส่ฟอร์ม
     setShowModal(true);
   };
 
@@ -201,6 +455,14 @@ function App() {
     setFormData({
       ...formData,
       [key]: e.target.value
+    });
+  };
+
+  // จัดการเมื่อเปลี่ยน checkbox (สำหรับ COA)
+  const handleCheckboxChange = (e, key) => {
+    setFormData({
+      ...formData,
+      [key]: e.target.checked
     });
   };
 
@@ -213,7 +475,17 @@ function App() {
     const headers = Object.keys(data[0]).filter(k => k !== 'rowIndex');
     
     // เรียงข้อมูลจาก formData ให้ตรงกับหัวข้อ
-    const rowDataArray = headers.map(header => formData[header] || "");
+    const rowDataArray = headers.map(header => {
+      // แปลงค่า COA จาก boolean เป็น TRUE/FALSE
+      if (header === "COA" || header.includes("COA")) {
+        if (formData[header] === true || formData[header] === "true" || formData[header] === "TRUE") {
+          return "TRUE";
+        } else {
+          return "FALSE";
+        }
+      }
+      return formData[header] || "";
+    });
 
     const action = editRowIndex !== null ? "edit" : "add";
 
@@ -264,8 +536,8 @@ function App() {
   }, [searchTerm, data, allData]);
 
   // 6. หาคอลัมน์ที่จะแสดง (ซ่อนคอลัมน์ที่ไม่มีข้อมูล)
-  const getVisibleColumns = () => {
-    const dataSource = searchTerm && allData.length > 0 ? allData : data;
+  const getVisibleColumns = useMemo(() => {
+    const dataSource = filteredData.length > 0 ? filteredData : data;
     if (dataSource.length === 0) return [];
     
     // ตรวจสอบว่าคอลัมน์ไหนมีข้อมูลอย่างน้อย 1 แถว
@@ -280,14 +552,14 @@ function App() {
     });
     
     // ถ้ามีการค้นหา ให้เพิ่มคอลัมน์ "หมวดหมู่" ไว้ด้านหน้า
-    if (searchTerm && allData.length > 0) {
+    if (searchTerm && filteredData.length > 0) {
       return ["_category", ...columns];
     }
     
     return columns;
-  };
+  }, [filteredData, searchTerm, data]);
 
-  const visibleColumns = getVisibleColumns();
+  const visibleColumns = getVisibleColumns;
 
   // ฟังก์ชันจัดการการ login
   const handleLogin = useCallback((success, role = 'admin', username = '') => {
@@ -552,11 +824,14 @@ function App() {
               ) : (
                 filteredData.map((row, index) => (
                   <tr key={index}>
-                    {visibleColumns.map((key) => (
-                      <td key={key} style={COLUMN_STYLES[key] || { width: '150px', minWidth: '150px' }}>
-                        {key === '_category' ? row._category : renderCellContent(key, row[key])}
-                      </td>
-                    ))}
+                    {visibleColumns.map((key) => {
+                      const cellValue = row[key];
+                      return (
+                        <td key={key} style={COLUMN_STYLES[key] || { width: '150px', minWidth: '150px' }}>
+                          {key === '_category' ? row._category : renderCellContent(key, cellValue)}
+                        </td>
+                      );
+                    })}
                     {/* คอลัมน์จัดการ - แสดงเฉพาะ admin */}
                     {userRole === 'admin' && (
                       <td className="text-center">
@@ -590,8 +865,26 @@ function App() {
                   {visibleColumns.map((key) => (
                     <div className="mb-3" key={key}>
                       <label className="form-label fw-bold">{key}</label>
-                      {/* ถ้าเป็นสเปคหรือรายละเอียด ใช้ textarea */}
-                      {key.includes("สเปค") || key.includes("รายละเอียด") || key.includes("วิธี") || key.includes("คำแนะนำ") || key.includes("คุณลักษณะ") ? (
+                      {/* ถ้าเป็น COA ใช้ checkbox */}
+                      {(key === "COA" || key.includes("COA")) ? (
+                        <div className="form-check">
+                          <input 
+                            className="form-check-input" 
+                            type="checkbox" 
+                            id={`checkbox-${key}`}
+                            checked={formData[key] === true || formData[key] === "true" || formData[key] === "TRUE" || formData[key] === "1" || formData[key] === "YES" || formData[key] === "Y"}
+                            onChange={(e) => handleCheckboxChange(e, key)}
+                            style={{ width: '1.25rem', height: '1.25rem', cursor: 'pointer', marginTop: '0.25rem' }}
+                          />
+                          <label className="form-check-label ms-2" htmlFor={`checkbox-${key}`} style={{ cursor: 'pointer', userSelect: 'none' }}>
+                            {formData[key] === true || formData[key] === "true" || formData[key] === "TRUE" || formData[key] === "1" || formData[key] === "YES" || formData[key] === "Y" ? (
+                              <span className="text-success fw-bold">TRUE</span>
+                            ) : (
+                              <span className="text-danger fw-bold">FALSE</span>
+                            )}
+                          </label>
+                        </div>
+                      ) : key.includes("เสป็คสินค้า") || key.includes("รายละเอียด") || key.includes("วิธี") || key.includes("คำแนะนำ") || key.includes("คุณลักษณะ") ? (
                         <textarea 
                           className="form-control" 
                           rows="3"
@@ -614,6 +907,57 @@ function App() {
               <div className="modal-footer">
                 <button type="button" className="btn btn-secondary" onClick={() => setShowModal(false)}>ยกเลิก</button>
                 <button type="button" className="btn btn-primary" onClick={handleSave}>บันทึก</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal แสดงรูปภาพแบบขยาย */}
+      {showImageModal && (
+        <div 
+          className="modal fade show" 
+          style={{ display: 'block', backgroundColor: 'rgba(0,0,0,0.9)', zIndex: 9999 }}
+          onClick={() => setShowImageModal(false)}
+        >
+          <div className="modal-dialog modal-dialog-centered" style={{ maxWidth: '90vw', maxHeight: '90vh' }}>
+            <div className="modal-content bg-transparent border-0">
+              <div className="modal-header border-0 bg-transparent">
+                <button 
+                  type="button" 
+                  className="btn-close btn-close-white" 
+                  onClick={() => setShowImageModal(false)}
+                  style={{ fontSize: '1.5rem' }}
+                ></button>
+              </div>
+              <div className="modal-body p-0 d-flex justify-content-center align-items-center">
+                {(() => {
+                  const driveInfo = convertGoogleDriveLink(imageModalUrl);
+                  const imageUrl = driveInfo ? driveInfo.primary : imageModalUrl;
+                  return (
+                    <img 
+                      src={imageUrl} 
+                      alt="Preview" 
+                      style={{ 
+                        maxWidth: '90vw', 
+                        maxHeight: '90vh', 
+                        objectFit: 'contain',
+                        borderRadius: '8px'
+                      }}
+                      onClick={(e) => e.stopPropagation()}
+                      onError={(e) => {
+                        // ถ้า primary ไม่ได้ ลอง fallback
+                        if (driveInfo && driveInfo.fallback) {
+                          e.target.src = driveInfo.fallback;
+                        } else if (driveInfo && driveInfo.fallback2) {
+                          e.target.src = driveInfo.fallback2;
+                        } else if (driveInfo && driveInfo.fallback3) {
+                          e.target.src = driveInfo.fallback3;
+                        }
+                      }}
+                    />
+                  );
+                })()}
               </div>
             </div>
           </div>
