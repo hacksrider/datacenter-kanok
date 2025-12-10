@@ -31,11 +31,11 @@ function Login({ onLogin }) {
     setTimeout(() => {
       // ตรวจสอบ admin
       if (username === HARDCODED_ADMIN_USERNAME && password === HARDCODED_ADMIN_PASSWORD) {
-        onLogin(true, 'admin')
+        onLogin(true, 'admin', username)
       } 
       // ตรวจสอบ user
       else if (username === HARDCODED_USER_USERNAME && password === HARDCODED_USER_PASSWORD) {
-        onLogin(true, 'user')
+        onLogin(true, 'user', username)
       } 
       else {
         setError('ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง')
@@ -44,8 +44,9 @@ function Login({ onLogin }) {
     }, 1500)
   }
 
-  const handleKeyPress = (e) => {
+  const handleKeyDown = (e) => {
     if (e.key === 'Enter' && username && password && !loading) {
+      e.preventDefault()
       handleSubmit()
     }
   }
@@ -562,17 +563,20 @@ function Login({ onLogin }) {
                   id="username"
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
-                  onKeyPress={handleKeyPress}
+                  onKeyDown={handleKeyDown}
                   placeholder="กรุณากรอกชื่อผู้ใช้"
                   autoFocus
+                  autoComplete="username"
+                  disabled={loading}
                   style={{
                     padding: '12px 16px',
                     paddingRight: '45px',
                     borderRadius: '12px',
                     border: '2px solid #E0E0E0',
                     fontSize: '15px',
-                    background: '#F8FFF9',
-                    transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)'
+                    background: loading ? '#F5F5F5' : '#F8FFF9',
+                    transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                    cursor: loading ? 'not-allowed' : 'text'
                   }}
                   onFocus={(e) => {
                     e.target.style.borderColor = '#56C596'
@@ -625,16 +629,19 @@ function Login({ onLogin }) {
                   id="password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  onKeyPress={handleKeyPress}
+                  onKeyDown={handleKeyDown}
                   placeholder="กรุณากรอกรหัสผ่าน"
+                  autoComplete="current-password"
+                  disabled={loading}
                   style={{
                     padding: '12px 16px',
                     paddingRight: '45px',
                     borderRadius: '12px',
                     border: '2px solid #E0E0E0',
                     fontSize: '15px',
-                    background: '#F8FFF9',
-                    transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)'
+                    background: loading ? '#F5F5F5' : '#F8FFF9',
+                    transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                    cursor: loading ? 'not-allowed' : 'text'
                   }}
                   onFocus={(e) => {
                     e.target.style.borderColor = '#56C596'

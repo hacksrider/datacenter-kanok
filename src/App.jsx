@@ -290,11 +290,21 @@ function App() {
   const visibleColumns = getVisibleColumns();
 
   // ฟังก์ชันจัดการการ login
-  const handleLogin = useCallback((success, role = 'admin') => {
+  const handleLogin = useCallback((success, role = 'admin', username = '') => {
     setIsAuthenticated(success);
     setUserRole(role);
     if (success) {
+      localStorage.setItem('isAuthenticated', 'true');
       localStorage.setItem('userRole', role);
+      if (username) {
+        localStorage.setItem('username', username);
+      }
+      // รีเซ็ต activity timer เมื่อ login สำเร็จ
+      localStorage.setItem('lastActivityTime', Date.now().toString());
+    } else {
+      localStorage.removeItem('isAuthenticated');
+      localStorage.removeItem('userRole');
+      localStorage.removeItem('username');
     }
   }, []);
 
@@ -312,11 +322,11 @@ function App() {
     setUserRole('admin');
   }, []);
 
-  // Auto-logout: ตรวจจับเมื่อไม่มีการใช้งาน 10 นาที
+  // Auto-logout: ตรวจจับเมื่อไม่มีการใช้งาน 60 นาที
   useEffect(() => {
     if (!isAuthenticated) return;
 
-    const IDLE_TIMEOUT = 10 * 60 * 1000; // 10 นาที
+    const IDLE_TIMEOUT = 60 * 60 * 1000; // 60 นาที
     let idleTimer = null;
     let visibilityTimer = null;
 
@@ -329,7 +339,7 @@ function App() {
       localStorage.setItem('lastActivityTime', Date.now().toString());
       
       idleTimer = setTimeout(() => {
-        alert('คุณไม่ได้ใช้งานระบบเป็นเวลา 10 นาที ระบบจะออกจากระบบอัตโนมัติ');
+        alert('คุณไม่ได้ใช้งานระบบเป็นเวลา 60 นาที ระบบจะออกจากระบบอัตโนมัติ');
         handleLogout(true);
       }, IDLE_TIMEOUT);
     };
@@ -346,7 +356,7 @@ function App() {
           if (lastVisibilityTime) {
             const timeDiff = Date.now() - parseInt(lastVisibilityTime);
             if (timeDiff >= IDLE_TIMEOUT) {
-              alert('คุณออกจากเว็บเป็นเวลา 10 นาที ระบบจะออกจากระบบอัตโนมัติ');
+              alert('คุณออกจากเว็บเป็นเวลา 60 นาที ระบบจะออกจากระบบอัตโนมัติ');
               handleLogout(true);
             }
           }
@@ -361,7 +371,7 @@ function App() {
         if (lastVisibilityTime) {
           const timeDiff = Date.now() - parseInt(lastVisibilityTime);
           if (timeDiff >= IDLE_TIMEOUT) {
-            alert('คุณออกจากเว็บเป็นเวลา 10 นาที ระบบจะออกจากระบบอัตโนมัติ');
+            alert('คุณออกจากเว็บเป็นเวลา 60 นาที ระบบจะออกจากระบบอัตโนมัติ');
             handleLogout(true);
             return;
           }
@@ -387,13 +397,13 @@ function App() {
     // เพิ่ม visibility change listener
     document.addEventListener('visibilitychange', handleVisibilityChange);
 
-    // ตรวจสอบเมื่อ component mount ว่ามีการ idle หรือออกจากเว็บเกิน 10 นาทีหรือไม่
+    // ตรวจสอบเมื่อ component mount ว่ามีการ idle หรือออกจากเว็บเกิน 60 นาทีหรือไม่
     const lastVisibilityTime = localStorage.getItem('lastVisibilityChangeTime');
     if (lastVisibilityTime && !document.hidden) {
-      // ตรวจสอบว่าออกจากเว็บเกิน 10 นาทีหรือไม่
+      // ตรวจสอบว่าออกจากเว็บเกิน 60 นาทีหรือไม่
       const visibilityTimeDiff = Date.now() - parseInt(lastVisibilityTime);
       if (visibilityTimeDiff >= IDLE_TIMEOUT) {
-        alert('คุณออกจากเว็บเป็นเวลา 10 นาที ระบบจะออกจากระบบอัตโนมัติ');
+        alert('คุณออกจากเว็บเป็นเวลา 60 นาที ระบบจะออกจากระบบอัตโนมัติ');
         handleLogout(true);
         return;
       }
@@ -405,14 +415,14 @@ function App() {
     if (lastActivityTime) {
       const timeDiff = Date.now() - parseInt(lastActivityTime);
       if (timeDiff >= IDLE_TIMEOUT) {
-        alert('คุณไม่ได้ใช้งานระบบเป็นเวลา 10 นาที ระบบจะออกจากระบบอัตโนมัติ');
+        alert('คุณไม่ได้ใช้งานระบบเป็นเวลา 60 นาที ระบบจะออกจากระบบอัตโนมัติ');
         handleLogout(true);
         return;
       } else {
         // ตั้ง timer ตามเวลาที่เหลือ
         const remainingTime = IDLE_TIMEOUT - timeDiff;
         idleTimer = setTimeout(() => {
-          alert('คุณไม่ได้ใช้งานระบบเป็นเวลา 10 นาที ระบบจะออกจากระบบอัตโนมัติ');
+          alert('คุณไม่ได้ใช้งานระบบเป็นเวลา 60 นาที ระบบจะออกจากระบบอัตโนมัติ');
           handleLogout(true);
         }, remainingTime);
       }
