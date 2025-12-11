@@ -20,6 +20,7 @@ const COLUMN_STYLES = {
   "คุณลักษณะพิเศษ": { width: "350px", minWidth: "350px" },
   "เสป็คสินค้า": { width: "220px", minWidth: "220px" },
   "สเปคสินค้า": { width: "220px", minWidth: "220px" },
+  "สเปกสินค้า": { width: "220px", minWidth: "220px" },
   "วิธีการใช้งาน": { width: "350px", minWidth: "350px" },
   "วิธีการบำรุงรักษา": { width: "350px", minWidth: "350px" },
   "คำแนะนำเพิ่มเติม": { width: "300px", minWidth: "300px" },
